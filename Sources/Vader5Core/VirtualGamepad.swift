@@ -24,7 +24,7 @@ final class VirtualGamepad {
         let properties: [String: Any] = [
             kIOHIDReportDescriptorKey: Data(Self.descriptor),
             kIOHIDTransportKey: "Virtual",
-            kIOHIDManufacturerKey: "Vader5 macOS",
+            kIOHIDManufacturerKey: "ControlLab",
             kIOHIDProductKey: "Vader 5 Pro Virtual Gamepad",
             kIOHIDVendorIDKey: Vader5Protocol.vendorID,
             kIOHIDProductIDKey: Vader5Protocol.productID,

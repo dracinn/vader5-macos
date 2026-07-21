@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "Vader5MacOS",
+    name: "ControlLab",
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "Vader5Core", targets: ["Vader5Core"]),
-        .executable(name: "vader5-cli", targets: ["Vader5CLI"]),
-        .executable(name: "Vader5GUI", targets: ["Vader5GUI"]),
+        .executable(name: "controllab-cli", targets: ["Vader5CLI"]),
+        .executable(name: "ControlLab", targets: ["ControlLab"]),
     ],
     targets: [
         .target(
@@ -31,7 +31,7 @@ let package = Package(
             path: "Sources/Vader5CLI"
         ),
         .executableTarget(
-            name: "Vader5GUI",
+            name: "ControlLab",
             dependencies: ["Vader5Core"],
             path: "Sources/Vader5GUI",
             linkerSettings: [

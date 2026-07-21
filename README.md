@@ -1,6 +1,6 @@
-# Vader 5 Pro macOS bridge
+# ControlLab
 
-Experimental macOS interoperability support for the Flydigi Vader 5 Pro
+ControlLab provides experimental macOS interoperability support for the Flydigi Vader 5 Pro
 2.4 GHz USB receiver. The bridge activates the controller's enhanced HID
 protocol, decodes its input reports, and forwards them through a standard
 virtual HID gamepad.
@@ -63,8 +63,8 @@ The GUI branch keeps protocol and device access independent from presentation:
 
 - `Vader5Core` — reusable Swift library for report parsing, receiver I/O, and
   optional virtual-gamepad output
-- `vader5-cli` — small command-line client for diagnostics and automation
-- `Vader5GUI` — native SwiftUI macOS client with connection controls and live
+- `controllab-cli` — small command-line client for diagnostics and automation
+- `ControlLab` — native SwiftUI macOS client with connection controls and live
   input visualization
 - `Vader5CoreTests` — synthetic protocol-report tests
 
@@ -78,32 +78,32 @@ Xcode command-line tools are required.
 
 ```sh
 make test       # build the package and run core tests
-make cli        # build vader5-cli
+make cli        # build controllab-cli
 make gui        # build the SwiftUI executable
-make app        # package build/Vader5.app
+make app        # package build/ControlLab.app
 ```
 
 Run the monitor-only CLI without the virtual-HID entitlement:
 
 ```sh
-swift run vader5-cli --monitor --verbose
+swift run controllab-cli --monitor --verbose
 ```
 
 Read the firmware versions currently reported by the connected device:
 
 ```sh
-swift run vader5-cli --firmware
+swift run controllab-cli --firmware
 ```
 
 Open the packaged GUI:
 
 ```sh
-open build/Vader5.app
+open build/ControlLab.app
 ```
 
 For virtual-gamepad output, sign the executable with a provisioning profile
 that contains `com.apple.developer.hid.virtual.device`. A sample entitlement
-file is included as `Vader5.entitlements`. Set `SIGNING_IDENTITY` when packaging
+file is included as `ControlLab.entitlements`. Set `SIGNING_IDENTITY` when packaging
 an approved build:
 
 ```sh

@@ -6,10 +6,10 @@ test:
 	swift test
 
 cli:
-	swift build --product vader5-cli
+	swift build --product controllab-cli
 
 gui:
-	swift build --product Vader5GUI
+	swift build --product ControlLab
 
 app:
 	./scripts/package-app.sh
