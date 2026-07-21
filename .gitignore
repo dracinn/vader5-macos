@@ -1,0 +1,7 @@
+.DS_Store
+.build/
+DerivedData/
+VirtualHID.o
+vader5-macos
+*.zip
+*.log
