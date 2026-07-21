@@ -13,6 +13,9 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
     @Published var hasReadDevice = false
     @Published var lastFirmwareCheck: Date?
     @Published var installedFirmware: Vader5FirmwareVersions?
+    @Published var downloadingModule: String?
+    @Published var firmwareDownloadMessage: String?
+    @Published var firmwareDownloadError: String?
     @Published var scenario = "Success"
     private var selectedPackage: Data?
 
@@ -66,6 +69,36 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
         }
     }
 
+    func downloadFirmware(_ release: Vader5FirmwareRelease, module: String) {
+        guard downloadingModule == nil else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.data]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = release.url.lastPathComponent.isEmpty
+            ? "\(module.lowercased())-\(release.version).fwpkg"
+            : release.url.lastPathComponent
+        panel.message = "Save the firmware package for offline inspection. It will not be installed."
+        panel.prompt = "Download"
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+
+        downloadingModule = module
+        firmwareDownloadMessage = nil
+        firmwareDownloadError = nil
+        Task {
+            do {
+                let info = try await Vader5FirmwareDownloadClient().download(
+                    release: release,
+                    to: destination)
+                selectedPackage = try Data(contentsOf: destination)
+                packageInfo = info
+                firmwareDownloadMessage = "Saved \(module) \(release.version) as \(info.fileName) (SHA-256 \(info.sha256.prefix(12))…)."
+            } catch {
+                firmwareDownloadError = String(describing: error)
+            }
+            downloadingModule = nil
+        }
+    }
+
     func runDryRun() {
         let selected: Vader5SimulationScenario = switch scenario {
         case "CRC error": .crcError(block: 0)
@@ -114,7 +147,7 @@ struct FirmwareDiagnosticsView: View {
     private var safetyCard: some View {
         GroupBox {
             Label(
-                "Firmware Diagnostics sends one read-only identity request over USB. Firmware erase, write, and update-mode commands remain unavailable.",
+                "Firmware Diagnostics can read version metadata and download packages to a file you choose. Firmware erase, write, and update-mode commands remain unavailable.",
                 systemImage: "lock.shield.fill"
             )
             .foregroundStyle(.green)
@@ -173,6 +206,16 @@ struct FirmwareDiagnosticsView: View {
                     firmwareRow("SI", installed: model.installedFirmware?.si, available: model.availableFirmware?.si)
                     firmwareRow("Dongle", installed: model.installedFirmware?.dongle, available: model.availableFirmware?.dongle)
                 }
+                if let message = model.firmwareDownloadMessage {
+                    Label(message, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+                if let error = model.firmwareDownloadError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
             }
             .padding(10)
         } label: {
@@ -195,6 +238,21 @@ struct FirmwareDiagnosticsView: View {
             Text(statusText(available: available))
                 .font(.callout)
                 .foregroundStyle(statusColor(available: available))
+            if let available {
+                Button {
+                    model.downloadFirmware(available, module: name)
+                } label: {
+                    if model.downloadingModule == name {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Download", systemImage: "arrow.down.circle")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(model.downloadingModule != nil)
+            } else {
+                Color.clear.frame(width: 94, height: 1)
+            }
         }
     }
 

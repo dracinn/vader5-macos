@@ -11,9 +11,10 @@ update endpoint and recovered HID OTA packet format, are in
 
 The app now includes a **Firmware Diagnostics** section that reads the connected
 controller's current firmware versions over USB, checks those versions against
-Flydigi's service, inspects packages, and runs an in-memory OTA simulator. The
-device query is read-only; attempts to request a real firmware update are refused.
-It does not switch USB modes, erase, or write controller firmware.
+Flydigi's service, downloads available packages to a user-selected file, inspects
+packages, and runs an in-memory OTA simulator. Downloads are storage-only;
+attempts to request a real firmware update are refused. The app does not switch
+USB modes, erase, or write controller firmware.
 
 > [!IMPORTANT]
 > The firmware update process still requires testing on Windows with the official

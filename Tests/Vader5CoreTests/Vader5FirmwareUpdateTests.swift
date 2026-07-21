@@ -89,3 +89,17 @@ import Testing
         try Vader5DiagnosticUpdater.refuseRealHardwareUpdate()
     }
 }
+
+@Test func validatesFirmwareDownloadResponses() throws {
+    let url = URL(string: "https://example.com/firmware.fwpkg")!
+    let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+    try Vader5FirmwareDownloadClient.validate(data: Data([1]), response: ok)
+
+    #expect(throws: Vader5FirmwareDownloadError.emptyFile) {
+        try Vader5FirmwareDownloadClient.validate(data: Data(), response: ok)
+    }
+    let missing = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+    #expect(throws: Vader5FirmwareDownloadError.invalidResponse) {
+        try Vader5FirmwareDownloadClient.validate(data: Data([1]), response: missing)
+    }
+}

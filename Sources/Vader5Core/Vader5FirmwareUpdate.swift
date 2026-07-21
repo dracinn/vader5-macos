@@ -49,6 +49,58 @@ public enum Vader5FirmwareUpdateError: Error, CustomStringConvertible {
     }
 }
 
+public enum Vader5FirmwareDownloadError: Error, Sendable, Equatable, CustomStringConvertible {
+    case insecureURL
+    case invalidResponse
+    case emptyFile
+
+    public var description: String {
+        switch self {
+        case .insecureURL:
+            "Firmware downloads must use a secure HTTPS URL."
+        case .invalidResponse:
+            "The firmware server returned an invalid download response."
+        case .emptyFile:
+            "The firmware server returned an empty file."
+        }
+    }
+}
+
+/// Downloads a firmware artifact to a user-selected file. This type has no HID
+/// device access and cannot start, erase, or write a controller update.
+public struct Vader5FirmwareDownloadClient: Sendable {
+    private let session: URLSession
+
+    public init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    public func download(
+        release: Vader5FirmwareRelease,
+        to destination: URL
+    ) async throws -> Vader5FirmwarePackageInfo {
+        guard release.url.scheme?.lowercased() == "https" else {
+            throw Vader5FirmwareDownloadError.insecureURL
+        }
+        var request = URLRequest(url: release.url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await session.data(for: request)
+        try Self.validate(data: data, response: response)
+        try data.write(to: destination, options: .atomic)
+        return Vader5FirmwarePackageInspector.inspect(
+            data: data,
+            fileName: destination.lastPathComponent)
+    }
+
+    static func validate(data: Data, response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse,
+              200..<300 ~= http.statusCode else {
+            throw Vader5FirmwareDownloadError.invalidResponse
+        }
+        guard !data.isEmpty else { throw Vader5FirmwareDownloadError.emptyFile }
+    }
+}
+
 public struct Vader5FirmwareUpdateClient: Sendable {
     public static let endpoint = URL(string: "https://api.flydigi.com/pc/Update/firmware")!
     public static let deviceCode = "k5"
