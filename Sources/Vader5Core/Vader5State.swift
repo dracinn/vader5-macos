@@ -1,8 +1,8 @@
 import Foundation
 
 public struct Vader5Buttons: OptionSet, Sendable, Equatable {
-    public let rawValue: UInt16
-    public init(rawValue: UInt16) { self.rawValue = rawValue }
+    public let rawValue: UInt32
+    public init(rawValue: UInt32) { self.rawValue = rawValue }
 
     public static let a = Self(rawValue: 1 << 0)
     public static let b = Self(rawValue: 1 << 1)
@@ -20,6 +20,8 @@ public struct Vader5Buttons: OptionSet, Sendable, Equatable {
     public static let m4 = Self(rawValue: 1 << 13)
     public static let home = Self(rawValue: 1 << 14)
     public static let function = Self(rawValue: 1 << 15)
+    public static let leftMacro = Self(rawValue: 1 << 16)
+    public static let rightMacro = Self(rawValue: 1 << 17)
 }
 
 public struct Vector3: Sendable, Equatable {

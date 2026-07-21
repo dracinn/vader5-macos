@@ -48,6 +48,8 @@ public enum Vader5Protocol {
         set(.m4, when: ext & 0x20 != 0)
         set(.home, when: ext2 & 0x08 != 0)
         set(.function, when: ext2 & 0x01 != 0)
+        set(.leftMacro, when: ext & 0x40 != 0)
+        set(.rightMacro, when: ext & 0x80 != 0)
 
         let dpadMap: [UInt8] = [8, 0, 2, 1, 4, 8, 3, 8, 6, 7, 8, 8, 5, 8, 8, 8]
         return Vader5State(
@@ -71,17 +73,18 @@ public enum Vader5Protocol {
             output[offset] = UInt8(raw & 0xff)
             output[offset + 1] = UInt8(raw >> 8)
         }
-        var report = [UInt8](repeating: 0, count: 14)
+        var report = [UInt8](repeating: 0, count: 15)
         report[0] = 1
         report[1] = UInt8(state.buttons.rawValue & 0xff)
-        report[2] = UInt8(state.buttons.rawValue >> 8)
-        report[3] = state.dpad
-        put16(state.leftX, into: &report, at: 4)
-        put16(state.leftY, into: &report, at: 6)
-        put16(state.rightX, into: &report, at: 8)
-        put16(state.rightY, into: &report, at: 10)
-        report[12] = state.leftTrigger
-        report[13] = state.rightTrigger
+        report[2] = UInt8((state.buttons.rawValue >> 8) & 0xff)
+        report[3] = UInt8((state.buttons.rawValue >> 16) & 0x03)
+        report[4] = state.dpad
+        put16(state.leftX, into: &report, at: 5)
+        put16(state.leftY, into: &report, at: 7)
+        put16(state.rightX, into: &report, at: 9)
+        put16(state.rightY, into: &report, at: 11)
+        report[13] = state.leftTrigger
+        report[14] = state.rightTrigger
         return report
     }
 }

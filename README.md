@@ -23,7 +23,7 @@ Working and tested on Apple silicon:
 - receiver discovery and user-space access
 - Flydigi initialization handshake
 - sticks, analog triggers, D-pad, and standard buttons
-- M1-M4, Home, and Fn/O
+- M1-M4, LM/RM, Home, and Fn/O
 - gyroscope and accelerometer decoding
 
 The physical reader and protocol decoder work without elevated privileges.

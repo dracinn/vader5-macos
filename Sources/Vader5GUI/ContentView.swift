@@ -120,7 +120,8 @@ struct ContentView: View {
         ("A", .a), ("B", .b), ("X", .x), ("Y", .y),
         ("LB", .leftBumper), ("RB", .rightBumper), ("L3", .leftStick), ("R3", .rightStick),
         ("M1", .m1), ("M2", .m2), ("M3", .m3), ("M4", .m4),
-        ("View", .select), ("Menu", .start), ("Home", .home), ("Fn", .function),
+        ("LM", .leftMacro), ("RM", .rightMacro), ("View", .select), ("Menu", .start),
+        ("Home", .home), ("Fn", .function),
     ]
 }
 
