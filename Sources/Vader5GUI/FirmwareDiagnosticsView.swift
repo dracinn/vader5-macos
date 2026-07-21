@@ -10,6 +10,7 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
     @Published var availableFirmware: Vader5FirmwareCatalog?
     @Published var isCheckingFirmware = false
     @Published var hasCheckedFirmware = false
+    @Published var lastFirmwareCheck: Date?
     @Published var scenario = "Success"
     private var selectedPackage: Data?
 
@@ -32,11 +33,17 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
                     appVersion: "4.1.0.31"
                 )
                 hasCheckedFirmware = true
+                lastFirmwareCheck = Date()
             } catch {
                 errorMessage = String(describing: error)
             }
             isCheckingFirmware = false
         }
+    }
+
+    func checkFirmwareIfNeeded() {
+        guard !hasCheckedFirmware else { return }
+        checkFirmware()
     }
 
     func inspectPackage() {
@@ -97,6 +104,7 @@ struct FirmwareDiagnosticsView: View {
             }
             .padding(22)
         }
+        .task { model.checkFirmwareIfNeeded() }
     }
 
     private var safetyCard: some View {
@@ -116,11 +124,28 @@ struct FirmwareDiagnosticsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Versions captured from this Vader 5 Pro")
-                            .font(.headline)
+                        HStack(spacing: 7) {
+                            Text("Versions captured from this Vader 5 Pro")
+                                .font(.headline)
+                            Text("LIVE")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green, in: Capsule())
+                        }
                         Text("Checking for updates contacts Flydigi only; it does not write to USB.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
+                        if let checked = model.lastFirmwareCheck {
+                            Text("Last checked \(checked.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if model.isCheckingFirmware {
+                            Text("Checking Flydigi now…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     Button {
@@ -129,7 +154,7 @@ struct FirmwareDiagnosticsView: View {
                         if model.isCheckingFirmware {
                             ProgressView().controlSize(.small)
                         } else {
-                            Text("Check Flydigi")
+                            Text(model.hasCheckedFirmware ? "Refresh" : "Check Flydigi")
                         }
                     }
                     .buttonStyle(.bordered)
@@ -147,7 +172,7 @@ struct FirmwareDiagnosticsView: View {
             }
             .padding(10)
         } label: {
-            Label("Firmware versions", systemImage: "memorychip")
+            Label("Live firmware checker", systemImage: "memorychip")
         }
     }
 
