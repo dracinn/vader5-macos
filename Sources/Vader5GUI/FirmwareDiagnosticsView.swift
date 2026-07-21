@@ -10,25 +10,34 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
     @Published var availableFirmware: Vader5FirmwareCatalog?
     @Published var isCheckingFirmware = false
     @Published var hasCheckedFirmware = false
+    @Published var hasReadDevice = false
+    @Published var lastFirmwareCheck: Date?
+    @Published var installedFirmware: Vader5FirmwareVersions?
+    @Published var downloadingModule: String?
+    @Published var firmwareDownloadMessage: String?
+    @Published var firmwareDownloadError: String?
     @Published var scenario = "Success"
     private var selectedPackage: Data?
 
     let scenarios = ["Success", "CRC error", "Timeout", "Invalid block", "Flash full"]
-    let installedFirmware = Vader5FirmwareVersions(
-        main: "7.1.5.2",
-        rf: "1.0.2.6",
-        si: "3.5.1.7",
-        dongle: "1.5.4.5"
-    )
-
     func checkFirmware() {
         guard !isCheckingFirmware else { return }
         isCheckingFirmware = true
         errorMessage = nil
+        availableFirmware = nil
+        hasCheckedFirmware = false
+        hasReadDevice = false
+        installedFirmware = nil
         Task {
             do {
+                let versions = try await Task.detached(priority: .userInitiated) {
+                    try Vader5FirmwareReader.read()
+                }.value
+                installedFirmware = versions
+                hasReadDevice = true
+                lastFirmwareCheck = Date()
                 availableFirmware = try await Vader5FirmwareUpdateClient().check(
-                    versions: installedFirmware,
+                    versions: versions,
                     appVersion: "4.1.0.31"
                 )
                 hasCheckedFirmware = true
@@ -37,6 +46,11 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
             }
             isCheckingFirmware = false
         }
+    }
+
+    func checkFirmwareIfNeeded() {
+        guard !hasCheckedFirmware else { return }
+        checkFirmware()
     }
 
     func inspectPackage() {
@@ -52,6 +66,36 @@ final class FirmwareDiagnosticsViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = String(describing: error)
+        }
+    }
+
+    func downloadFirmware(_ release: Vader5FirmwareRelease, module: String) {
+        guard downloadingModule == nil else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.data]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = release.url.lastPathComponent.isEmpty
+            ? "\(module.lowercased())-\(release.version).fwpkg"
+            : release.url.lastPathComponent
+        panel.message = "Save the firmware package for offline inspection. It will not be installed."
+        panel.prompt = "Download"
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+
+        downloadingModule = module
+        firmwareDownloadMessage = nil
+        firmwareDownloadError = nil
+        Task {
+            do {
+                let info = try await Vader5FirmwareDownloadClient().download(
+                    release: release,
+                    to: destination)
+                selectedPackage = try Data(contentsOf: destination)
+                packageInfo = info
+                firmwareDownloadMessage = "Saved \(module) \(release.version) as \(info.fileName) (SHA-256 \(info.sha256.prefix(12))…)."
+            } catch {
+                firmwareDownloadError = String(describing: error)
+            }
+            downloadingModule = nil
         }
     }
 
@@ -97,12 +141,13 @@ struct FirmwareDiagnosticsView: View {
             }
             .padding(22)
         }
+        .task { model.checkFirmwareIfNeeded() }
     }
 
     private var safetyCard: some View {
         GroupBox {
             Label(
-                "Firmware Diagnostics cannot open a HID device or send erase/write commands. All updater traffic stays in memory.",
+                "Firmware Diagnostics can read version metadata and download packages to a file you choose. Firmware erase, write, and update-mode commands remain unavailable.",
                 systemImage: "lock.shield.fill"
             )
             .foregroundStyle(.green)
@@ -116,11 +161,28 @@ struct FirmwareDiagnosticsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Versions captured from this Vader 5 Pro")
-                            .font(.headline)
-                        Text("Checking for updates contacts Flydigi only; it does not write to USB.")
+                        HStack(spacing: 7) {
+                            Text("Current firmware reported by this Vader 5 Pro")
+                                .font(.headline)
+                            Text("LIVE")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green, in: Capsule())
+                        }
+                        Text("The device is read over USB first, then its reported versions are checked with Flydigi.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
+                        if let checked = model.lastFirmwareCheck {
+                            Text("Last checked \(checked.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if model.isCheckingFirmware {
+                            Text(model.hasReadDevice ? "Checking Flydigi now…" : "Reading firmware from USB…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     Button {
@@ -129,7 +191,7 @@ struct FirmwareDiagnosticsView: View {
                         if model.isCheckingFirmware {
                             ProgressView().controlSize(.small)
                         } else {
-                            Text("Check Flydigi")
+                            Text(model.hasReadDevice ? "Refresh device" : "Read device")
                         }
                     }
                     .buttonStyle(.bordered)
@@ -139,15 +201,25 @@ struct FirmwareDiagnosticsView: View {
                 Divider()
 
                 Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 9) {
-                    firmwareRow("Controller", installed: model.installedFirmware.main, available: model.availableFirmware?.main)
-                    firmwareRow("RF", installed: model.installedFirmware.rf, available: model.availableFirmware?.rf)
-                    firmwareRow("SI", installed: model.installedFirmware.si, available: model.availableFirmware?.si)
-                    firmwareRow("Dongle", installed: model.installedFirmware.dongle, available: model.availableFirmware?.dongle)
+                    firmwareRow("Controller", installed: model.installedFirmware?.main, available: model.availableFirmware?.main)
+                    firmwareRow("RF", installed: model.installedFirmware?.rf, available: model.availableFirmware?.rf)
+                    firmwareRow("SI", installed: model.installedFirmware?.si, available: model.availableFirmware?.si)
+                    firmwareRow("Dongle", installed: model.installedFirmware?.dongle, available: model.availableFirmware?.dongle)
+                }
+                if let message = model.firmwareDownloadMessage {
+                    Label(message, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+                if let error = model.firmwareDownloadError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
             }
             .padding(10)
         } label: {
-            Label("Firmware versions", systemImage: "memorychip")
+            Label("Live firmware checker", systemImage: "memorychip")
         }
     }
 
@@ -159,19 +231,42 @@ struct FirmwareDiagnosticsView: View {
     ) -> some View {
         GridRow {
             Text(name).font(.callout.weight(.semibold)).frame(width: 82, alignment: .leading)
-            Text(installed ?? "Unknown")
+            Text(installed ?? (model.isCheckingFirmware && !model.hasReadDevice ? "Reading…" : "Unknown"))
                 .font(.system(.callout, design: .monospaced))
-            Image(systemName: available == nil ? "checkmark.circle.fill" : "arrow.right.circle.fill")
+            Image(systemName: statusIcon(available: available))
                 .foregroundStyle(statusColor(available: available))
             Text(statusText(available: available))
                 .font(.callout)
                 .foregroundStyle(statusColor(available: available))
+            if let available {
+                Button {
+                    model.downloadFirmware(available, module: name)
+                } label: {
+                    if model.downloadingModule == name {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Download", systemImage: "arrow.down.circle")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(model.downloadingModule != nil)
+            } else {
+                Color.clear.frame(width: 94, height: 1)
+            }
         }
     }
 
     private func statusText(available: Vader5FirmwareRelease?) -> String {
         if let available { return "Update available: \(available.version)" }
-        return model.hasCheckedFirmware ? "Current" : "Captured"
+        if model.hasCheckedFirmware { return "Current" }
+        if model.hasReadDevice { return "Read from USB" }
+        return model.isCheckingFirmware ? "Querying device" : "Not read"
+    }
+
+    private func statusIcon(available: Vader5FirmwareRelease?) -> String {
+        if available != nil { return "arrow.right.circle.fill" }
+        if model.hasCheckedFirmware { return "checkmark.circle.fill" }
+        return model.isCheckingFirmware ? "ellipsis.circle.fill" : "questionmark.circle"
     }
 
     private func statusColor(available: Vader5FirmwareRelease?) -> Color {

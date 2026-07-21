@@ -89,3 +89,28 @@ import Testing
         try Vader5DiagnosticUpdater.refuseRealHardwareUpdate()
     }
 }
+
+@Test func validatesFirmwareDownloadResponses() throws {
+    let url = URL(string: "https://example.com/firmware.fwpkg")!
+    let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+    try Vader5FirmwareDownloadClient.validate(data: Data([1]), response: ok)
+
+    #expect(throws: Vader5FirmwareDownloadError.emptyFile) {
+        try Vader5FirmwareDownloadClient.validate(data: Data(), response: ok)
+    }
+    let missing = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+    #expect(throws: Vader5FirmwareDownloadError.invalidResponse) {
+        try Vader5FirmwareDownloadClient.validate(data: Data([1]), response: missing)
+    }
+}
+
+@Test func upgradesFlydigiCDNDownloadsToHTTPS() throws {
+    let returnedURL = URL(string: "http://api-web.cdn.flydigi.com/devicefirmwares/test.fwpkg")!
+    let secureURL = try Vader5FirmwareDownloadClient.secureURL(for: returnedURL)
+    #expect(secureURL.absoluteString == "https://api-web.cdn.flydigi.com/devicefirmwares/test.fwpkg")
+
+    let unknownHTTP = URL(string: "http://example.com/firmware.fwpkg")!
+    #expect(throws: Vader5FirmwareDownloadError.insecureURL) {
+        try Vader5FirmwareDownloadClient.secureURL(for: unknownHTTP)
+    }
+}
