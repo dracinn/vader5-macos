@@ -7,15 +7,22 @@ final class BridgeViewModel: ObservableObject {
     @Published var status: Vader5BridgeStatus = .stopped
     @Published var state: Vader5State = .neutral
     @Published var errorMessage: String?
+    @Published var gyroDeadZone = 128 {
+        didSet { applySensorDeadZones() }
+    }
+    @Published var accelerometerDeadZone = 256 {
+        didSet { applySensorDeadZones() }
+    }
 
     private let bridge = Vader5Bridge()
+    private var rawState: Vader5State = .neutral
 
     init() {
         bridge.onStatus = { [weak self] status in
             Task { @MainActor in self?.status = status }
         }
         bridge.onState = { [weak self] state in
-            Task { @MainActor in self?.state = state }
+            Task { @MainActor in self?.receive(state) }
         }
     }
 
@@ -45,4 +52,15 @@ final class BridgeViewModel: ObservableObject {
     }
 
     func stop() { bridge.stop() }
+
+    private func receive(_ state: Vader5State) {
+        rawState = state
+        applySensorDeadZones()
+    }
+
+    private func applySensorDeadZones() {
+        state = rawState.applyingSensorDeadZones(
+            gyro: gyroDeadZone,
+            accelerometer: accelerometerDeadZone)
+    }
 }
