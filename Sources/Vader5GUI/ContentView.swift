@@ -46,8 +46,8 @@ struct ContentView: View {
             }
             .frame(width: 48, height: 48)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Vader 5 Pro").font(.title2.bold())
-                Text("macOS bridge").foregroundStyle(.secondary)
+                Text("ControlLab").font(.title2.bold())
+                Text("Vader 5 Pro macOS bridge").foregroundStyle(.secondary)
             }
             Spacer()
             Circle()

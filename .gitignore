@@ -4,5 +4,6 @@ build/
 DerivedData/
 VirtualHID.o
 vader5-macos
+ControlLab
 *.zip
 *.log

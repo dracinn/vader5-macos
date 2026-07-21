@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct Vader5GUIApp: App {
+struct ControlLabApp: App {
     @StateObject private var model = BridgeViewModel()
 
     var body: some Scene {

@@ -29,7 +29,7 @@ signal(SIGTERM) { _ in CFRunLoopStop(CFRunLoopGetMain()) }
 
 do {
     try bridge.start(mode: mode)
-    print("Vader 5 Pro bridge active in \(mode.rawValue) mode. Press Control-C to stop.")
+    print("ControlLab bridge active in \(mode.rawValue) mode. Press Control-C to stop.")
     CFRunLoopRun()
     bridge.stop()
 } catch {
