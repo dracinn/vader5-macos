@@ -77,23 +77,37 @@ import Testing
     #expect(Vader5Protocol.parseFirmwareVersions(report) == nil)
 }
 
-@Test func appliesIndependentMotionSensorDeadZones() {
+@Test func appliesRestingMotionSensorCalibration() {
     let state = Vader5State(
         leftX: 1, leftY: 2, rightX: 3, rightY: 4,
         leftTrigger: 5, rightTrigger: 6, dpad: 8,
         buttons: [.a], extraButtons: 0,
         gyro: .init(x: 127, y: -128, z: 129),
-        accelerometer: .init(x: 255, y: -256, z: 257)
+        accelerometer: .init(x: 255, y: -256, z: 4096)
     )
 
-    let filtered = state.applyingSensorDeadZones(gyro: 128, accelerometer: 256)
-    #expect(filtered.gyro == Vector3(x: 0, y: 0, z: 129))
-    #expect(filtered.accelerometer == Vector3(x: 0, y: 0, z: 257))
-    #expect(filtered.leftX == state.leftX)
-    #expect(filtered.buttons == state.buttons)
+    let calibration = Vader5SensorCalibration(
+        gyroBias: .init(x: 120, y: -120, z: 125),
+        accelerometerBias: .init(x: 250, y: -250, z: 4090)
+    )
+    let calibrated = state.applyingSensorCalibration(calibration)
+    #expect(calibrated.gyro == Vector3(x: 7, y: -8, z: 4))
+    #expect(calibrated.accelerometer == Vector3(x: 5, y: -6, z: 6))
+    #expect(calibrated.leftX == state.leftX)
+    #expect(calibrated.buttons == state.buttons)
 }
 
-@Test func deadZoneHandlesFullInt16Range() {
-    let vector = Vector3(x: .min, y: .max, z: 1).applyingDeadZone(32_767)
-    #expect(vector == Vector3(x: .min, y: 0, z: 0))
+@Test func sensorCalibrationClampsFullInt16Range() {
+    let state = Vader5State(
+        leftX: 0, leftY: 0, rightX: 0, rightY: 0,
+        leftTrigger: 0, rightTrigger: 0, dpad: 8,
+        buttons: [], extraButtons: 0,
+        gyro: .init(x: .min, y: .max, z: 0),
+        accelerometer: .init(x: 0, y: 0, z: 0)
+    )
+    let calibration = Vader5SensorCalibration(
+        gyroBias: .init(x: 1, y: -1, z: 0),
+        accelerometerBias: .init(x: 0, y: 0, z: 0)
+    )
+    #expect(state.applyingSensorCalibration(calibration).gyro == Vector3(x: .min, y: .max, z: 0))
 }
