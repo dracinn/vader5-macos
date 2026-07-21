@@ -126,27 +126,14 @@ struct ContentView: View {
                     SensorValue(title: "Accelerometer", vector: model.state.accelerometer)
                 }
                 Divider()
-                HStack(spacing: 12) {
-                    Button {
-                        model.calibrateSensors()
-                    } label: {
-                        if model.isCalibratingSensors {
-                            HStack(spacing: 7) {
-                                ProgressView().controlSize(.small)
-                                Text("Calibrating…")
-                            }
-                        } else {
-                            Label("Calibrate at rest", systemImage: "scope")
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!model.isRunning || model.isCalibratingSensors)
-
-                    Text(model.calibrationMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 24) {
+                    DeadZoneControl(title: "Gyroscope dead zone", value: $model.gyroDeadZone)
+                    DeadZoneControl(title: "Accelerometer dead zone", value: $model.accelerometerDeadZone)
                 }
+                Text("Each axis is set to zero while its absolute raw value is inside the selected dead zone.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }.padding(10)
         }
     }
@@ -200,5 +187,31 @@ private struct SensorValue: View {
             Text("X \(vector.x)   Y \(vector.y)   Z \(vector.z)")
                 .font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct DeadZoneControl: View {
+    let title: String
+    @Binding var value: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title).font(.caption.bold())
+                Spacer()
+                Text("\(value)")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(value) },
+                    set: { value = Int($0) }
+                ),
+                in: 0...4096,
+                step: 64
+            )
+        }
+        .frame(maxWidth: .infinity)
     }
 }
