@@ -61,13 +61,22 @@ struct ContentView: View {
     private var connectionCard: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 14) {
-                Picker("Mode", selection: $model.mode) {
-                    ForEach(Vader5BridgeMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                Picker("Connection", selection: $model.transport) {
+                    ForEach(Vader5Transport.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .disabled(model.isRunning)
 
-                if model.mode == .virtualGamepad {
+                Picker("Mode", selection: $model.mode) {
+                    ForEach(Vader5BridgeMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .disabled(model.isRunning || model.transport == .bluetooth)
+
+                if model.transport == .bluetooth {
+                    Label("Uses the Xbox-compatible Bluetooth HID profile already recognized by macOS", systemImage: "wave.3.right")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else if model.mode == .virtualGamepad {
                     Label("Requires Apple’s virtual HID entitlement", systemImage: "checkmark.seal")
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
@@ -81,14 +90,17 @@ struct ContentView: View {
                 }
 
                 HStack {
-                    Text("USB 37D7:2401").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                    Text(model.transport == .bluetooth ? "Bluetooth Xbox-compatible HID" : "USB 37D7:2401")
+                        .font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                     Spacer()
                     Button(model.isRunning ? "Stop bridge" : "Start bridge") { model.toggle() }
                         .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                 }
             }.padding(10)
-        } label: { Label("Connection", systemImage: "cable.connector") }
+        } label: {
+            Label("Connection", systemImage: model.transport == .bluetooth ? "antenna.radiowaves.left.and.right" : "cable.connector")
+        }
     }
 
     private var sticksCard: some View {
@@ -119,10 +131,17 @@ struct ContentView: View {
 
     private var sensorsCard: some View {
         GroupBox("Motion sensors") {
-            HStack {
-                SensorValue(title: "Gyroscope", vector: model.state.gyro)
-                Divider().frame(height: 52)
-                SensorValue(title: "Accelerometer", vector: model.state.accelerometer)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    SensorValue(title: "Gyroscope", vector: model.state.gyro)
+                    Divider().frame(height: 52)
+                    SensorValue(title: "Accelerometer", vector: model.state.accelerometer)
+                }
+                if model.transport == .bluetooth {
+                    Label("Motion sensors are not exposed by the Xbox-compatible Bluetooth profile.", systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }.padding(10)
         }
     }

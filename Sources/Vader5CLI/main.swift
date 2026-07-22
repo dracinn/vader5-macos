@@ -15,7 +15,9 @@ if CommandLine.arguments.contains("--firmware") {
     }
 }
 
-let mode: Vader5BridgeMode = CommandLine.arguments.contains("--monitor")
+let transport: Vader5Transport = CommandLine.arguments.contains("--bluetooth")
+    ? .bluetooth : .usbReceiver
+let mode: Vader5BridgeMode = transport == .bluetooth || CommandLine.arguments.contains("--monitor")
     ? .monitor : .virtualGamepad
 let bridge = Vader5Bridge()
 bridge.onStatus = { print("Status: \($0)") }
@@ -28,8 +30,8 @@ signal(SIGINT) { _ in CFRunLoopStop(CFRunLoopGetMain()) }
 signal(SIGTERM) { _ in CFRunLoopStop(CFRunLoopGetMain()) }
 
 do {
-    try bridge.start(mode: mode)
-    print("ControlLab bridge active in \(mode.rawValue) mode. Press Control-C to stop.")
+    try bridge.start(mode: mode, transport: transport)
+    print("ControlLab bridge active over \(transport.rawValue) in \(mode.rawValue) mode. Press Control-C to stop.")
     CFRunLoopRun()
     bridge.stop()
 } catch {

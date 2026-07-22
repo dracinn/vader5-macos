@@ -4,6 +4,11 @@ import Vader5Core
 @MainActor
 final class BridgeViewModel: ObservableObject {
     @Published var mode: Vader5BridgeMode = .monitor
+    @Published var transport: Vader5Transport = .usbReceiver {
+        didSet {
+            if transport == .bluetooth { mode = .monitor }
+        }
+    }
     @Published var status: Vader5BridgeStatus = .stopped
     @Published var state: Vader5State = .neutral
     @Published var errorMessage: String?
@@ -28,7 +33,7 @@ final class BridgeViewModel: ObservableObject {
         switch status {
         case .stopped: "Disconnected"
         case .connecting: "Connecting…"
-        case .running(.monitor): "Monitoring"
+        case .running(.monitor): transport == .bluetooth ? "Bluetooth connected" : "Monitoring"
         case .running(.virtualGamepad): "Gamepad active"
         case .failed: "Connection failed"
         }
@@ -39,7 +44,7 @@ final class BridgeViewModel: ObservableObject {
         if isRunning {
             bridge.stop()
         } else {
-            do { try bridge.start(mode: mode) }
+            do { try bridge.start(mode: mode, transport: transport) }
             catch { errorMessage = String(describing: error) }
         }
     }

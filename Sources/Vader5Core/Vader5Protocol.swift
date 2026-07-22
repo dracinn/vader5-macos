@@ -5,6 +5,9 @@ public enum Vader5Protocol {
     public static let productID = 0x2401
     public static let usagePage = 0xffa0
     public static let usage = 1
+    public static let bluetoothProductName = "Xbox Wireless Controller"
+    public static let bluetoothUsagePage = 0x01
+    public static let bluetoothUsage = 0x05
 
     public static let firmwareQueryCommand: [UInt8] = [0x5a, 0xa5, 0x01, 0x02, 0x03]
 
@@ -67,6 +70,59 @@ public enum Vader5Protocol {
 
     public static func parse(_ data: [UInt8]) -> Vader5State? {
         data.withUnsafeBufferPointer(parse)
+    }
+
+    /// Parses the standard Xbox-compatible Bluetooth report exposed by Vader 5.
+    public static func parseBluetooth(_ data: UnsafeBufferPointer<UInt8>) -> Vader5State? {
+        guard data.count >= 16, data[0] == 0x01 else { return nil }
+
+        func u16(_ offset: Int) -> UInt16 {
+            UInt16(data[offset]) | UInt16(data[offset + 1]) << 8
+        }
+        func axis(_ offset: Int, inverted: Bool = false) -> Int16 {
+            let centered = Int(u16(offset)) - 32_768
+            return Int16(clamping: inverted ? -centered : centered)
+        }
+        func trigger(_ offset: Int) -> UInt8 {
+            let raw = Int(u16(offset) & 0x03ff)
+            return UInt8((raw * 255 + 511) / 1023)
+        }
+
+        let rawButtons = UInt16(data[14]) | UInt16(data[15] & 0x03) << 8
+        var buttons: Vader5Buttons = []
+        let mappings: [(UInt16, Vader5Buttons)] = [
+            (1 << 0, .a), (1 << 1, .b), (1 << 2, .x), (1 << 3, .y),
+            (1 << 4, .leftBumper), (1 << 5, .rightBumper),
+            (1 << 6, .select), (1 << 7, .start),
+            (1 << 8, .leftStick), (1 << 9, .rightStick),
+        ]
+        for (mask, button) in mappings where rawButtons & mask != 0 {
+            buttons.insert(button)
+        }
+
+        let hat = data[13] & 0x0f
+        return Vader5State(
+            leftX: axis(1), leftY: axis(3, inverted: true),
+            rightX: axis(5), rightY: axis(7, inverted: true),
+            leftTrigger: trigger(9), rightTrigger: trigger(11),
+            dpad: (1...8).contains(hat) ? hat - 1 : 8,
+            buttons: buttons, extraButtons: 0,
+            gyro: .init(x: 0, y: 0, z: 0),
+            accelerometer: .init(x: 0, y: 0, z: 0)
+        )
+    }
+
+    public static func parseBluetooth(_ data: [UInt8]) -> Vader5State? {
+        data.withUnsafeBufferPointer(parseBluetooth)
+    }
+
+    public static func parseBluetoothHome(_ data: UnsafeBufferPointer<UInt8>) -> Bool? {
+        guard data.count >= 2, data[0] == 0x02 else { return nil }
+        return data[1] & 0x01 != 0
+    }
+
+    public static func parseBluetoothHome(_ data: [UInt8]) -> Bool? {
+        data.withUnsafeBufferPointer(parseBluetoothHome)
     }
 
     /// Parses the NewXInput heartbeat returned by command 0x01.

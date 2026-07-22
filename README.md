@@ -1,9 +1,9 @@
 # ControlLab
 
 ControlLab provides experimental macOS interoperability support for the Flydigi Vader 5 Pro
-2.4 GHz USB receiver. The bridge activates the controller's enhanced HID
-protocol, decodes its input reports, and forwards them through a standard
-virtual HID gamepad.
+2.4 GHz USB receiver and Xbox-compatible Bluetooth mode. The USB bridge activates
+the controller's enhanced HID protocol; Bluetooth reads the standard gamepad
+profile already exposed by macOS.
 
 Static findings from the official Windows firmware updater, including the
 update endpoint and recovered HID OTA packet format, are in
@@ -48,6 +48,8 @@ Working and tested on Apple silicon:
 - M1-M4, LM/RM, Home, and Fn/O
 - gyroscope and accelerometer decoding
 - live controller, RF, SI, and dongle firmware-version reads
+- Xbox-compatible Bluetooth input for sticks, triggers, D-pad, standard buttons,
+  and Guide/Home
 
 The physical reader and protocol decoder work without elevated privileges.
 Creating the standard virtual gamepad requires Apple's restricted
@@ -56,6 +58,10 @@ bypass that requirement on current macOS releases.
 
 Gyroscope, accelerometer, and rumble are not yet exposed through the virtual
 gamepad.
+
+Bluetooth mode is monitor-only because macOS already exposes it as a standard
+gamepad. Vader-specific extra buttons, motion sensors, and firmware metadata are
+not present in its Bluetooth report; use the USB receiver for those features.
 
 ## Architecture
 
@@ -87,6 +93,12 @@ Run the monitor-only CLI without the virtual-HID entitlement:
 
 ```sh
 swift run controllab-cli --monitor --verbose
+```
+
+Monitor the paired Xbox-compatible Bluetooth profile:
+
+```sh
+swift run controllab-cli --bluetooth --verbose
 ```
 
 Read the firmware versions currently reported by the connected device:

@@ -76,3 +76,29 @@ import Testing
     report[0...4] = [0x5a, 0xa5, 0x01, 0x18, 0x80]
     #expect(Vader5Protocol.parseFirmwareVersions(report) == nil)
 }
+
+@Test func parsesXboxCompatibleBluetoothReport() {
+    var report = [UInt8](repeating: 0, count: 16)
+    report[0] = 1
+    report[1...8] = [0xff, 0xff, 0x00, 0x00, 0x00, 0x80, 0xff, 0xff]
+    report[9...12] = [0xff, 0x03, 0x00, 0x02]
+    report[13] = 3
+    report[14...15] = [0x51, 0x02]
+
+    let state = Vader5Protocol.parseBluetooth(report)
+    #expect(state?.leftX == 32_767)
+    #expect(state?.leftY == 32_767)
+    #expect(state?.rightX == 0)
+    #expect(state?.rightY == -32_767)
+    #expect(state?.leftTrigger == 255)
+    #expect(state?.rightTrigger == 128)
+    #expect(state?.dpad == 2)
+    #expect(state?.buttons == [.a, .leftBumper, .select, .rightStick])
+    #expect(state?.gyro == Vector3(x: 0, y: 0, z: 0))
+}
+
+@Test func parsesBluetoothGuideButtonReport() {
+    #expect(Vader5Protocol.parseBluetoothHome([2, 1]) == true)
+    #expect(Vader5Protocol.parseBluetoothHome([2, 0]) == false)
+    #expect(Vader5Protocol.parseBluetoothHome([1, 0]) == nil)
+}
