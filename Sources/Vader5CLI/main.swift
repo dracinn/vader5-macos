@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Vader5Core
 
 if CommandLine.arguments.contains("--firmware") {
@@ -17,10 +18,17 @@ if CommandLine.arguments.contains("--firmware") {
 
 let transport: Vader5Transport = CommandLine.arguments.contains("--bluetooth")
     ? .bluetooth : .usbReceiver
+if transport == .bluetooth {
+    // Apple's GameController discovery, used by SDL for this profile, needs a
+    // Cocoa application object even though this client has no windows.
+    NSApplication.shared.finishLaunching()
+}
 let mode: Vader5BridgeMode = transport == .bluetooth || CommandLine.arguments.contains("--monitor")
     ? .monitor : .virtualGamepad
 let bridge = Vader5Bridge()
 bridge.onStatus = { print("Status: \($0)") }
+bridge.onLightingStatus = { print("Lighting: \($0)") }
+bridge.onLightingConfiguration = { print("Lighting configuration: \($0)") }
 bridge.onState = { state in
     if CommandLine.arguments.contains("--verbose") {
         print("LX \(state.leftX) LY \(state.leftY) RX \(state.rightX) RY \(state.rightY) buttons 0x\(String(state.buttons.rawValue, radix: 16))")

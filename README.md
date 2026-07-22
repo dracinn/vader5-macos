@@ -2,12 +2,15 @@
 
 ControlLab provides experimental macOS interoperability support for the Flydigi Vader 5 Pro
 2.4 GHz USB receiver and Xbox-compatible Bluetooth mode. The USB bridge activates
-the controller's enhanced HID protocol; Bluetooth reads the standard gamepad
-profile already exposed by macOS.
+the controller's enhanced HID protocol directly through IOKit; Bluetooth uses
+SDL3's standard gamepad layer over the profile already exposed by macOS.
 
 Static findings from the official Windows firmware updater, including the
 update endpoint and recovered HID OTA packet format, are in
 [`docs/windows-firmware-updater.md`](docs/windows-firmware-updater.md).
+The clean-room Space Station lighting analysis and recovered New XInput RGB
+packet layout are in
+[`docs/spacestation-rgb-analysis.md`](docs/spacestation-rgb-analysis.md).
 
 The app now includes a **Firmware Diagnostics** section that reads the connected
 controller's current firmware versions over USB, checks those versions against
@@ -46,10 +49,14 @@ Working and tested on Apple silicon:
 - Flydigi initialization handshake
 - sticks, analog triggers, D-pad, and standard buttons
 - M1-M4, LM/RM, Home, and Fn/O
+- C and Z face inputs
 - gyroscope and accelerometer decoding
 - live controller, RF, SI, and dongle firmware-version reads
-- Xbox-compatible Bluetooth input for sticks, triggers, D-pad, standard buttons,
-  and Guide/Home
+- SDL3-backed Xbox-compatible Bluetooth input for sticks, triggers, D-pad,
+  standard buttons, and Guide/Home
+- steady-color RGB control over the USB receiver after the current lighting
+  configuration is read and validated
+- SDL3 RGB output for gamepads that advertise SDL's standard RGB LED capability
 
 The physical reader and protocol decoder work without elevated privileges.
 Creating the standard virtual gamepad requires Apple's restricted
@@ -62,25 +69,66 @@ gamepad.
 Bluetooth mode is monitor-only because macOS already exposes it as a standard
 gamepad. Vader-specific extra buttons, motion sensors, and firmware metadata are
 not present in its Bluetooth report; use the USB receiver for those features.
+SDL 3.4.12 does not advertise an RGB LED for Flydigi's Xbox-compatible Bluetooth
+profile, so Vader lighting currently uses the verified USB protocol. The SDL
+path remains capability-gated for compatible standard gamepads.
+
+The USB lighting implementation was checked against the official Space Station
+4.2.0.9 controller library. ControlLab reads and validates the existing versioned
+LED configuration before enabling Apply, then uses the recovered New XInput
+`A8`/`A9` chunk protocol. It does not send speculative packets.
+
+The lighting panel mirrors Space Station's Vader 5 controls: Default, Flow,
+Breathing, Feedback, Gradient, Steady, and Off modes; brightness; animated cycle
+time; and up to five colors where the selected effect supports them. Flow and
+Default retain their device-supplied preset frames, and settings are remembered
+per mode while ControlLab remains connected.
+
+The **Configuration** workspace mirrors Space Station's four-profile layout and
+its Common, Button, Joystick, Gyro, and Trigger option groups. It includes local
+drafts for button assignments, turbo and macros, circularity algorithms,
+sensitivity curves, active ranges and dead zones, gyro mapping, trigger ranges,
+vibration, sleep time, joystick accuracy, debounce, and center sensitivity.
+These drafts persist on the Mac. Applying profile settings to controller memory
+remains disabled until the corresponding Vader 5 USB write protocol is captured
+and validated; ControlLab does not send guessed configuration packets.
 
 ## Architecture
 
-The GUI branch keeps protocol and device access independent from presentation:
+The GUI branch keeps protocol and device access independent from presentation.
+Both transports converge on the same `Vader5State` model:
+
+```text
+USB receiver -> Vader5Core / direct IOKit --+
+                                             +-> Vader5State
+Bluetooth   -> SDL3 gamepad backend --------+
+```
 
 - `Vader5Core` — reusable Swift library for report parsing, receiver I/O, and
   optional virtual-gamepad output
+- `SDLGamepadC` — narrow SDL3 adapter for standard Bluetooth gamepad state
 - `controllab-cli` — small command-line client for diagnostics and automation
 - `ControlLab` — native SwiftUI macOS client with connection controls and live
-  input visualization
+  Space Station-style controller visualization; sticks move in place and every
+  standard, macro, rear, shoulder, trigger, Home, and Fn input lights up on the
+  controller graphic
 - `Vader5CoreTests` — synthetic protocol-report tests
 
 Both clients use the same `Vader5Bridge` API. The bridge supports `.monitor`
 mode, which reads and displays the physical controller without a restricted
 entitlement, and `.virtualGamepad` mode for signed production builds.
 
+On the Controller screen, choose **Edit layout** to drag each input overlay over
+the official controller render. Choose **Done** when aligned. Positions are
+saved automatically on the Mac and reused by the other controller previews;
+**Reset** restores ControlLab's built-in aligned positions.
+
 ## Build
 
-Xcode command-line tools are required.
+Xcode command-line tools are required. The repository vendors the universal
+macOS framework from the official
+[SDL 3.4.12 release](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.12),
+and `make app` embeds and signs it inside `ControlLab.app`.
 
 ```sh
 make test       # build the package and run core tests
@@ -139,4 +187,7 @@ Linux driver and verified against physical hardware on macOS.
 
 ## License
 
-MIT
+ControlLab is MIT licensed. SDL3 is distributed under the zlib license; its
+license is included at `ThirdPartyNotices/SDL3-LICENSE.txt` and in packaged apps.
+The official Vader 5 Pro render is copyright Flydigi and is excluded from the
+MIT license; see `ThirdPartyNotices/FLYDIGI-ASSET-NOTICE.md`.
