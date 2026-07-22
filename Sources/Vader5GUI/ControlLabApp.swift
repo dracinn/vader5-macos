@@ -7,7 +7,7 @@ struct ControlLabApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: model)
-                .frame(minWidth: 720, minHeight: 520)
+                .frame(minWidth: 1040, minHeight: 680)
         }
         .windowStyle(.hiddenTitleBar)
         .commands {

@@ -10,6 +10,16 @@ let package = Package(
         .executable(name: "ControlLab", targets: ["ControlLab"]),
     ],
     targets: [
+        .binaryTarget(
+            name: "SDL3",
+            path: "Vendor/SDL3.xcframework"
+        ),
+        .target(
+            name: "SDLGamepadC",
+            dependencies: ["SDL3"],
+            path: "Sources/SDLGamepadC",
+            publicHeadersPath: "include"
+        ),
         .target(
             name: "Vader5CoreC",
             path: "Sources/Vader5CoreC",
@@ -21,19 +31,21 @@ let package = Package(
         ),
         .target(
             name: "Vader5Core",
-            dependencies: ["Vader5CoreC"],
+            dependencies: ["Vader5CoreC", "SDLGamepadC"],
             path: "Sources/Vader5Core",
             linkerSettings: [.linkedFramework("IOKit")]
         ),
         .executableTarget(
             name: "Vader5CLI",
             dependencies: ["Vader5Core"],
-            path: "Sources/Vader5CLI"
+            path: "Sources/Vader5CLI",
+            linkerSettings: [.linkedFramework("AppKit")]
         ),
         .executableTarget(
             name: "ControlLab",
             dependencies: ["Vader5Core"],
             path: "Sources/Vader5GUI",
+            exclude: ["Resources"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),

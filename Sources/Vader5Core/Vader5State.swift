@@ -22,6 +22,8 @@ public struct Vader5Buttons: OptionSet, Sendable, Equatable {
     public static let function = Self(rawValue: 1 << 15)
     public static let leftMacro = Self(rawValue: 1 << 16)
     public static let rightMacro = Self(rawValue: 1 << 17)
+    public static let c = Self(rawValue: 1 << 18)
+    public static let z = Self(rawValue: 1 << 19)
 }
 
 public struct Vector3: Sendable, Equatable {

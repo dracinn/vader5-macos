@@ -147,7 +147,7 @@ struct FirmwareDiagnosticsView: View {
     private var safetyCard: some View {
         GroupBox {
             Label(
-                "Firmware Diagnostics can read version metadata and download packages to a file you choose. Firmware erase, write, and update-mode commands remain unavailable.",
+                "Firmware metadata requires the USB receiver. Packages can be downloaded to a file you choose, while erase, write, and update-mode commands remain unavailable.",
                 systemImage: "lock.shield.fill"
             )
             .foregroundStyle(.green)
